@@ -161,7 +161,7 @@ def perform_update_optimized(root_path, local_version, expected_version=None, up
         update_source: 更新源，'github' 或 'gitee'
     """
     print("🚀 [自动更新] 开始更新 (智能同步模式)...请稍候。")
-    owner, repo = 'guaguastandup', 'zotero-pdf2zh'
+    owner, repo = 'osoulmate', 'zotero-pdf2zh'
     project_root = os.path.dirname(root_path)
     print(f"   - 项目根目录: {project_root}")
     print(f"   - 当前服务目录: {root_path}")
@@ -281,9 +281,9 @@ def check_for_updates(local_version, update_source='github'):
     """
     print("🔍 [自动更新] 正在检查更新...")
     if update_source == 'gitee':
-        remote_script_url = "https://gitee.com/guaguastandup/zotero-pdf2zh/raw/main/server/server.py"
+        remote_script_url = "https://gitee.com/osoulmate/zotero-pdf2zh/raw/main/server/server.py"
     else:
-        remote_script_url = "https://raw.githubusercontent.com/guaguastandup/zotero-pdf2zh/main/server/server.py"
+        remote_script_url = "https://raw.githubusercontent.com/osoulmate/zotero-pdf2zh/main/server/server.py"
     try:
         with urllib.request.urlopen(remote_script_url, timeout=30) as response:
             remote_content = response.read().decode('utf-8')

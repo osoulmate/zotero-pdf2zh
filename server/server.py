@@ -1,5 +1,4 @@
-## server.py v3.0.36
-# guaguastandup
+## server.py v3.1.0
 # zotero-pdf2zh
 import os
 from flask import Flask, request, jsonify, send_file, Response
@@ -29,18 +28,18 @@ from utils.execute import execute_with_progress
 
 _VALUE_ERROR_RE = re.compile(r'(?m)^ValueError:\s*(?P<msg>.+)$')
 
-# NEW: 定义当前脚本版本  
+# NEW: 定义当前脚本版本
 # 修复了Ocr的问题, 更新了readme
 # 添加了新的预热方法
 # 修复windows预热方法, 修复skipInstall默认选项
 # 解决apikey暴露的问题
-__version__ = "3.0.36" 
+__version__ = "3.1.0"
 update_log = "近期版本新增了自定义镜像源选项, 新增了自定义更新源选项, 您可以通过--update_source参数指定更新源, 目前支持github和gitee. 修复了预热模式脚本. 修复了包检查环节. 开始支持Zotero 8. 修复了gitee源的问题."
 
 ############# config file #########
 pdf2zh      = 'pdf2zh'
 pdf2zh_next = 'pdf2zh_next'
-venv        = 'venv' 
+venv        = 'venv'
 
 # TODO: 强制设置标准输出和标准错误的编码为 UTF-8
 # sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -176,7 +175,7 @@ class PDFTranslator:
     def process_request(self):
         data = request.get_json() # 获取请求的data
         config = Config(data)
-        
+
         file_content = data.get('fileContent', '')
         if file_content.startswith('data:application/pdf;base64,'):
             file_content = file_content[len('data:application/pdf;base64,'):]
@@ -184,7 +183,7 @@ class PDFTranslator:
         input_path = os.path.join(output_folder, data['fileName'])
         with open(input_path, 'wb') as f:
             f.write(base64.b64decode(file_content))
-        
+
         # input_path表示保存的pdf源文件路径
         return input_path, config
 
@@ -284,7 +283,7 @@ class PDFTranslator:
                     compare_path = self.get_filename_after_process(dual_path, 'compare', engine)
                     self.cropper.merge_pdf(dual_path, compare_path)
                     addFileList(fileList, compare_path)
-                
+
             elif engine == pdf2zh_next:
                 print("🔍 [Zotero PDF2zh Server] PDF2zh_next 开始翻译文件...")
                 # compare/crop-compare 语义固定为“左原文右译文”，因此强制原文页在前
@@ -309,7 +308,7 @@ class PDFTranslator:
                 else:
                     mono_path, dual_path = retList[0], retList[1]
                     fileList.append(mono_path)
-                
+
                 if config.dual_cut or config.crop_compare or config.compare:
                     LR_dual_path = dual_path.replace('.dual.pdf', '.LR_dual.pdf')
                     TB_dual_path = dual_path.replace('.dual.pdf', '.TB_dual.pdf')
@@ -350,7 +349,7 @@ class PDFTranslator:
                         print("🐲 无需生成compare文件, 等同于dual文件(Left&Right)")
             else:
                 raise ValueError(f"⚠️ [Zotero PDF2zh Server] 输入了不支持的翻译引擎: {engine}, 目前脚本仅支持: pdf2zh/pdf2zh_next")
-            
+
             fileNameList = [os.path.basename(path) for path in fileList]
             existing = [p for p in fileList if os.path.exists(p)]
             missing  = [p for p in fileList if not os.path.exists(p)]
@@ -535,7 +534,7 @@ class PDFTranslator:
             new_type = self.get_filetype_after_cropCompare(input_path)
             if new_type == 'unknown':
                 return jsonify({'status': 'error', 'message': f'Input file is not valid PDF type {infile_type} for crop-compare()'}), 400
-            
+
             new_path = self.get_filename_after_process(input_path, new_type, engine)
             if infile_type == 'dual-cut':
                 self.cropper.merge_pdf(input_path, new_path)
@@ -558,7 +557,7 @@ class PDFTranslator:
             input_path, config = self.process_request()
             infile_type = self.get_filetype(input_path)
             engine = config.engine
-            if infile_type == 'origin': 
+            if infile_type == 'origin':
                 if engine == pdf2zh or engine != pdf2zh_next:
                     config.engine = 'pdf2zh'
                     fileList = self.translate_pdf(input_path, config)
@@ -610,7 +609,7 @@ class PDFTranslator:
         elif 'mono-cut.pdf' in path:
             return 'mono-cut'
         elif 'crop-compare.pdf' in path: # 裁剪后才merge
-            return 'crop-compare'  
+            return 'crop-compare'
         elif 'compare.pdf' in path:      # 无需裁剪, 直接merge
             return 'compare'
         elif 'cut.pdf' in path:
@@ -639,7 +638,7 @@ class PDFTranslator:
         if filetype == 'origin' or filetype == 'dual':
             return 'compare'
         return 'unknown'
-        
+
     def get_filename_after_process(self, inpath, outtype, engine):
         if engine == pdf2zh or engine != pdf2zh_next:
             intype = self.get_filetype(inpath)
@@ -664,8 +663,8 @@ class PDFTranslator:
         if config.sourceLang == 'zh-CN': # TOFIX, pdf2zh 1.x converter没有通过
             config.sourceLang = 'zh'
         cmd = [
-            pdf2zh, 
-            input_path, 
+            pdf2zh,
+            input_path,
             '--t', str(config.thread_num),
             '--output', str(output_folder),
             '--service', str(config.service),
@@ -707,7 +706,7 @@ class PDFTranslator:
             size = os.path.getsize(f)
             print(f"🐲 pdf2zh 翻译成功, 生成文件: {f}, 大小为: {size/1024.0/1024.0:.2f} MB")
         return output_files
-    
+
     def translate_pdf_next(self, input_path, config, task_id=None):
         service_map = {
             'ModelScope': 'modelscope',
@@ -969,7 +968,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser() 
+    parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=PORT, help='Port to run the server on')
 
     parser.add_argument('--enable_venv', type=str2bool, default=enable_venv, help='脚本自动开启虚拟环境')
