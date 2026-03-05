@@ -22,3 +22,4 @@ ast.json
 LOG.md
 
 server/dev/
+server/venv_debug.log
