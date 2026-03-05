@@ -40,7 +40,11 @@ export class PDF2zhHelperFactory {
                 const filepath = await this.validatePDFAttachment(item);
                 const fileName = PathUtils.filename(filepath);
                 const config = this.getServerConfig();
-                if (endpoint === "translate" || endpoint === "crop-compare" || endpoint === "compare") {
+                if (
+                    endpoint === "translate" ||
+                    endpoint === "crop-compare" ||
+                    endpoint === "compare"
+                ) {
                     const pageOption = this.getPerItemTranslatePageOption(
                         fileName,
                         config,
