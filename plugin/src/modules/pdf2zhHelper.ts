@@ -40,7 +40,7 @@ export class PDF2zhHelperFactory {
                 const filepath = await this.validatePDFAttachment(item);
                 const fileName = PathUtils.filename(filepath);
                 const config = this.getServerConfig();
-                if (["translate", "compare", "crop-compare"].includes(endpoint)) {
+                if (endpoint === "translate") {
                     const pageOption = this.getPerItemTranslatePageOption(
                         fileName,
                         config,
@@ -90,8 +90,18 @@ export class PDF2zhHelperFactory {
         fileName: string,
         config: ServerConfig,
     ): { skipLastPages: string; pagesRange: string } | null {
-        const pagesRangeInput = this.promptInput(
-            `为文章 ${fileName} 设置“指定页段”（如 1-8 或 1-3,5,7-9）。\n留空则按“跳过最后几页”规则（仅对需要翻译原文的流程生效）。`,
+        const promptFn = ztoolkit.getGlobal("prompt") as
+            | ((message?: string, defaultValue?: string) => string | null)
+            | undefined;
+        if (!promptFn) {
+            return {
+                skipLastPages: config.skipLastPages || "0",
+                pagesRange: "",
+            };
+        }
+
+        const pagesRangeInput = promptFn(
+            `为文章 ${fileName} 设置“指定页段”（如 1-8 或 1-3,5,7-9）。\n留空则按“跳过最后几页”规则。`,
             config.pagesRange || "",
         );
         if (pagesRangeInput === null) {
@@ -112,7 +122,7 @@ export class PDF2zhHelperFactory {
             };
         }
 
-        const skipInput = this.promptInput(
+        const skipInput = promptFn(
             `为文章 ${fileName} 设置“跳过最后几页”（非负整数）。`,
             config.skipLastPages || "0",
         );
@@ -134,66 +144,6 @@ export class PDF2zhHelperFactory {
 
     static isValidPagesRange(value: string): boolean {
         return /^(\d+(-\d+)?)(,(\d+(-\d+)?))*$/.test(value);
-    }
-
-    static promptInput(message: string, defaultValue: string): string | null {
-        const mainWindow = Zotero.getMainWindow() as
-            | (Window & {
-                  prompt?: (
-                      message?: string,
-                      defaultValue?: string,
-                  ) => string | null;
-              })
-            | undefined;
-        if (mainWindow?.prompt) {
-            return mainWindow.prompt(message, defaultValue);
-        }
-
-        try {
-            const services = ztoolkit.getGlobal("Services") as
-                | {
-                      prompt?: {
-                          prompt: (
-                              parent: unknown,
-                              title: string,
-                              text: string,
-                              value: { value: string },
-                              checkMsg: string | null,
-                              checkState: { value: boolean } | null,
-                          ) => boolean;
-                      };
-                  }
-                | undefined;
-            if (services?.prompt?.prompt) {
-                const value = { value: defaultValue };
-                const ok = services.prompt.prompt(
-                    mainWindow || null,
-                    "Zotero PDF2zh",
-                    message,
-                    value,
-                    null,
-                    null,
-                );
-                if (!ok) {
-                    return null;
-                }
-                return value.value;
-            }
-        } catch (error) {
-            ztoolkit.log("Services.prompt 弹窗失败", error);
-        }
-
-        const promptFn = ztoolkit.getGlobal("prompt") as
-            | ((message?: string, defaultValue?: string) => string | null)
-            | undefined;
-        if (promptFn) {
-            return promptFn(message, defaultValue);
-        }
-
-        ztoolkit.getGlobal("alert")(
-            "当前环境不支持弹窗输入，已回退为全局配置。",
-        );
-        return defaultValue;
     }
 
     // 处理单个文件
