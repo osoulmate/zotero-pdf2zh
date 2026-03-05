@@ -28,7 +28,7 @@ pref("__prefsPrefix__.fontFile", "");
 // pdf2x
 pref("__prefsPrefix__.fontFamily", "auto");
 pref("__prefsPrefix__.dualMode", "LR");
-pref("__prefsPrefix__.transFirst", true);
+pref("__prefsPrefix__.transFirst", false);
 pref("__prefsPrefix__.ocr", false);
 pref("__prefsPrefix__.autoOcr", true);
 pref("__prefsPrefix__.noWatermark", true);

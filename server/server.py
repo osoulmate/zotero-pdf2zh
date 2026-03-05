@@ -287,6 +287,9 @@ class PDFTranslator:
                 
             elif engine == pdf2zh_next:
                 print("🔍 [Zotero PDF2zh Server] PDF2zh_next 开始翻译文件...")
+                # compare/crop-compare 语义固定为“左原文右译文”，因此强制原文页在前
+                if config.compare or config.crop_compare:
+                    config.trans_first = False
                 if config.mono_cut or config.mono:
                     config.no_mono = False
                 if config.dual or config.dual_cut or config.crop_compare or config.compare:
@@ -519,6 +522,7 @@ class PDFTranslator:
 
                 else: # pdf2zh_next
                     config.dual_mode = 'TB'
+                    config.trans_first = False
                     config.no_dual = False
                     config.no_mono = True
                     fileList = self.translate_pdf_next(input_path, config)
@@ -570,6 +574,7 @@ class PDFTranslator:
                     self.cropper.merge_pdf(input_path, new_path)
                 else:
                     config.dual_mode = 'LR' # 直接生成dualMode为LR的文件, 就是Compare模式
+                    config.trans_first = False
                     config.no_dual = False
                     config.no_mono = True
                     fileList = self.translate_pdf_next(input_path, config)
