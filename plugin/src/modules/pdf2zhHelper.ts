@@ -40,6 +40,17 @@ export class PDF2zhHelperFactory {
                 const filepath = await this.validatePDFAttachment(item);
                 const fileName = PathUtils.filename(filepath);
                 const config = this.getServerConfig();
+                if (endpoint === "translate") {
+                    const pageOption = this.getPerItemTranslatePageOption(
+                        fileName,
+                        config,
+                    );
+                    if (!pageOption) {
+                        continue;
+                    }
+                    config.skipLastPages = pageOption.skipLastPages;
+                    config.pagesRange = pageOption.pagesRange;
+                }
                 tasks.push({
                     fileName,
                     item,
@@ -73,6 +84,66 @@ export class PDF2zhHelperFactory {
         });
         // 处理任务
         await fileProcessor.processBatch(tasks);
+    }
+
+    static getPerItemTranslatePageOption(
+        fileName: string,
+        config: ServerConfig,
+    ): { skipLastPages: string; pagesRange: string } | null {
+        const promptFn = ztoolkit.getGlobal("prompt") as
+            | ((message?: string, defaultValue?: string) => string | null)
+            | undefined;
+        if (!promptFn) {
+            return {
+                skipLastPages: config.skipLastPages || "0",
+                pagesRange: "",
+            };
+        }
+
+        const pagesRangeInput = promptFn(
+            `为文章 ${fileName} 设置“指定页段”（如 1-8 或 1-3,5,7-9）。\n留空则按“跳过最后几页”规则。`,
+            config.pagesRange || "",
+        );
+        if (pagesRangeInput === null) {
+            return null;
+        }
+
+        const pagesRange = pagesRangeInput.trim();
+        if (pagesRange.length > 0) {
+            if (!this.isValidPagesRange(pagesRange)) {
+                ztoolkit.getGlobal("alert")(
+                    `页段格式无效: ${pagesRange}\n请使用示例格式: 1-8 或 1-3,5,7-9`,
+                );
+                return null;
+            }
+            return {
+                skipLastPages: "0",
+                pagesRange,
+            };
+        }
+
+        const skipInput = promptFn(
+            `为文章 ${fileName} 设置“跳过最后几页”（非负整数）。`,
+            config.skipLastPages || "0",
+        );
+        if (skipInput === null) {
+            return null;
+        }
+        const skipLastPages = skipInput.trim();
+        if (!/^\d+$/.test(skipLastPages)) {
+            ztoolkit.getGlobal("alert")(
+                `跳过页数格式无效: ${skipLastPages}\n请输入非负整数。`,
+            );
+            return null;
+        }
+        return {
+            skipLastPages,
+            pagesRange: "",
+        };
+    }
+
+    static isValidPagesRange(value: string): boolean {
+        return /^(\d+(-\d+)?)(,(\d+(-\d+)?))*$/.test(value);
     }
 
     // 处理单个文件
@@ -382,6 +453,7 @@ export class PDF2zhHelperFactory {
             targetLang: getPref("targetLang")?.toString() || "",
 
             skipLastPages: getPref("skipLastPages")?.toString() || "",
+            pagesRange: "",
             threadNum: getPref("threadNum")?.toString() || "",
             qps: getPref("qps")?.toString() || "10",
             poolSize: getPref("poolSize")?.toString() || "0",

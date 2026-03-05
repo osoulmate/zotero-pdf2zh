@@ -20,6 +20,7 @@ export interface ServerConfig {
     next_service: string;
 
     skipLastPages: string;
+    pagesRange: string;
     sourceLang: string;
     targetLang: string;
     // generate

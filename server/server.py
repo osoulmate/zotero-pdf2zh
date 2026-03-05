@@ -669,7 +669,9 @@ class PDFTranslator:
             '--config', str(config_path[pdf2zh]), # 使用默认的config path路径
         ]
 
-        if config.skip_last_pages and config.skip_last_pages > 0:
+        if config.pages_range:
+            cmd.append('-p '+str(config.pages_range))
+        elif config.skip_last_pages and config.skip_last_pages > 0:
             end = len(PdfReader(input_path).pages) - config.skip_last_pages
             cmd.append('-p '+str(1)+'-'+str(end))
         if config.skip_font_subsets:
@@ -729,7 +731,9 @@ class PDFTranslator:
             cmd.extend(['--watermark-output-mode', 'no_watermark'])
         else:
             cmd.extend(['--watermark-output-mode', 'watermarked'])
-        if config.skip_last_pages and config.skip_last_pages > 0:
+        if config.pages_range:
+            cmd.extend(['--pages', str(config.pages_range)])
+        elif config.skip_last_pages and config.skip_last_pages > 0:
             end = len(PdfReader(input_path).pages) - config.skip_last_pages
             cmd.extend(['--pages', f'{1}-{end}'])
         if config.no_dual:

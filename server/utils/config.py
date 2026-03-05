@@ -2,6 +2,7 @@
 # guaguastandup
 # zotero-pdf2zh
 import json, toml
+import re
 import os
 from utils.config_map import pdf2zh_config_map, pdf2zh_next_config_map
 
@@ -43,6 +44,14 @@ class Config:
             self.skip_last_pages = int(self.skip_last_pages)
         except ValueError:
             self.skip_last_pages = 0
+
+        self.pages_range = request_data.get('pagesRange', '')
+        if self.pages_range in [None, '']:
+            self.pages_range = ''
+        else:
+            self.pages_range = str(self.pages_range).strip()
+            if not re.match(r'^(\d+(-\d+)?)(,(\d+(-\d+)?))*$', self.pages_range):
+                self.pages_range = ''
 
         self.thread_num = request_data.get('threadNum', 8)
         try: 
