@@ -1,10 +1,1 @@
-- [ ] html页面(包含候选项)
-- [ ] 服务添加对应的thread_num
-- [ ] readme里面增加command + ,的快捷键
-- [ ] LLMEditor里的url增加下拉选择框
-- [ ] 额外字段的设置问题
-- [ ] 假设服务A生成了dual-cut文件，那么在dual-cut基础上生成的文件，service也应该是原本的service
-- ✅ windows终端显示表情问题
-- ❌ llmapi-table双击条目弹出弹窗
-- ✅ 自动update server.zip的命令
-- ✅ 表格字段的长度再调整长一点
+- [ ] 插件端“最后几页跳过翻译”中数字如果超出PDF文件页数导致后端server计算翻译页数出现`1-负数`导致报错问题(原因是负数符号与`-`定义的分隔符冲突导致分页提取错误)
