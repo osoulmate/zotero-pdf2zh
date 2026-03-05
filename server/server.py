@@ -162,6 +162,38 @@ class PDFTranslator:
         }
         return jsonify({'status': 'success', 'config': config_info})
 
+    def _build_task_config_summary(self, config, engine):
+        """构建前端展示用的任务配置摘要（不含敏感信息）"""
+        output_types = []
+        if config.mono:
+            output_types.append('mono')
+        if config.dual:
+            output_types.append('dual')
+        if config.mono_cut:
+            output_types.append('mono-cut')
+        if config.dual_cut:
+            output_types.append('dual-cut')
+        if config.compare:
+            output_types.append('compare')
+        if config.crop_compare:
+            output_types.append('crop-compare')
+
+        config_summary = {
+            'sourceLang': config.sourceLang,
+            'targetLang': config.targetLang,
+            'outputTypes': output_types,
+        }
+        if engine == pdf2zh:
+            config_summary['threadNum'] = config.thread_num
+            config_summary['babeldoc'] = config.babeldoc
+        elif engine == pdf2zh_next:
+            config_summary['qps'] = config.qps
+            config_summary['dualMode'] = config.dual_mode
+            config_summary['noWatermark'] = config.no_watermark
+            config_summary['ocr'] = config.ocr or config.auto_ocr
+            config_summary['poolSize'] = config.pool_size
+        return config_summary
+
     ##################################################################
     # Favicon 路由
     ##################################################################
@@ -505,17 +537,34 @@ class PDFTranslator:
             return self._handle_exception(e, context='/crop')
 
     def crop_compare(self):
+        task_id = str(uuid.uuid4())
+        start_time = datetime.now()
         try:
             input_path, config = self.process_request()
             infile_type = self.get_filetype(input_path)
             engine = config.engine
+            config_summary = self._build_task_config_summary(config, engine)
+            task_manager.add_task(task_id, {
+                'taskId': task_id,
+                'active': True,
+                'fileName': os.path.basename(input_path),
+                'engine': engine,
+                'service': config.service,
+                'startTime': start_time.isoformat(),
+                'progress': 0,
+                'status': '开始翻译',
+                'message': '正在初始化...',
+                'config': config_summary
+            })
 
             if infile_type == 'origin':
+                task_manager.update_task(task_id, {'status': '运行中', 'progress': 5, 'message': '正在生成双语文件...'})
                 if engine == pdf2zh or engine != pdf2zh_next: # 默认为pdf2zh
                     config.engine = 'pdf2zh'
-                    fileList = self.translate_pdf(input_path, config)
+                    fileList = self.translate_pdf(input_path, config, task_id)
                     dual_path = fileList[1] # 会生成mono和dual文件
                     if not os.path.exists(dual_path):
+                        task_manager.complete_task(task_id, 'failed', f'Unable to translate origin file, could not generate: {dual_path}', error=f'Unable to translate origin file, could not generate: {dual_path}')
                         return jsonify({'status': 'error', 'message': f'Unable to translate origin file, could not generate: {dual_path}'}), 500
                     input_path = dual_path # crop_compare输入的是dual路径的文件
 
@@ -524,17 +573,20 @@ class PDFTranslator:
                     config.trans_first = False
                     config.no_dual = False
                     config.no_mono = True
-                    fileList = self.translate_pdf_next(input_path, config)
+                    fileList = self.translate_pdf_next(input_path, config, task_id)
                     dual_path = fileList[0] # 仅生成dual文件
                     if not os.path.exists(dual_path):
+                        task_manager.complete_task(task_id, 'failed', f'Dual file not found: {dual_path}', error=f'Dual file not found: {dual_path}')
                         return jsonify({'status': 'error', 'message': f'Dual file not found: {dual_path}'}), 500
                     input_path = dual_path
 
             infile_type = self.get_filetype(input_path)
             new_type = self.get_filetype_after_cropCompare(input_path)
             if new_type == 'unknown':
+                task_manager.complete_task(task_id, 'failed', f'Input file is not valid PDF type {infile_type} for crop-compare()', error=f'Input file is not valid PDF type {infile_type} for crop-compare()')
                 return jsonify({'status': 'error', 'message': f'Input file is not valid PDF type {infile_type} for crop-compare()'}), 400
 
+            task_manager.update_task(task_id, {'status': '运行中', 'progress': 90, 'message': '正在裁剪并拼接...'})
             new_path = self.get_filename_after_process(input_path, new_type, engine)
             if infile_type == 'dual-cut':
                 self.cropper.merge_pdf(input_path, new_path)
@@ -545,30 +597,52 @@ class PDFTranslator:
                 fileName = os.path.basename(new_path)
                 size = os.path.getsize(new_path)
                 print(f"🐲 双语对照成功(裁剪后拼接), 生成文件: {fileName}, 大小为: {size/1024.0/1024.0:.2f} MB")
+                task_manager.complete_task(task_id, 'success', '成功生成 1 个文件', file_list=[fileName])
                 return jsonify({'status': 'success', 'fileList': [fileName]}), 200
             else:
+                task_manager.complete_task(task_id, 'failed', f'Crop-compare failed: {new_path} not found', error=f'Crop-compare failed: {new_path} not found')
                 return jsonify({'status': 'error', 'message': f'Crop-compare failed: {new_path} not found'}), 500
         except Exception as e:
+            task_manager.complete_task(task_id, 'failed', str(e), error=str(e))
             return self._handle_exception(e, context='/crop-compare')
 
     # /compare
     def compare(self):
+        task_id = str(uuid.uuid4())
+        start_time = datetime.now()
         try:
             input_path, config = self.process_request()
             infile_type = self.get_filetype(input_path)
             engine = config.engine
+            config_summary = self._build_task_config_summary(config, engine)
+            task_manager.add_task(task_id, {
+                'taskId': task_id,
+                'active': True,
+                'fileName': os.path.basename(input_path),
+                'engine': engine,
+                'service': config.service,
+                'startTime': start_time.isoformat(),
+                'progress': 0,
+                'status': '开始翻译',
+                'message': '正在初始化...',
+                'config': config_summary
+            })
             if infile_type == 'origin':
+                task_manager.update_task(task_id, {'status': '运行中', 'progress': 5, 'message': '正在生成双语文件...'})
                 if engine == pdf2zh or engine != pdf2zh_next:
                     config.engine = 'pdf2zh'
-                    fileList = self.translate_pdf(input_path, config)
+                    fileList = self.translate_pdf(input_path, config, task_id)
                     dual_path = fileList[1]
                     if not os.path.exists(dual_path):
+                        task_manager.complete_task(task_id, 'failed', f'Dual file not found: {dual_path}', error=f'Dual file not found: {dual_path}')
                         return jsonify({'status': 'error', 'message': f'Dual file not found: {dual_path}'}), 500
                     input_path = dual_path
                     infile_type = self.get_filetype(input_path)
                     new_type = self.get_filetype_after_compare(input_path)
                     if new_type == 'unknown':
+                        task_manager.complete_task(task_id, 'failed', f'Input file is not valid PDF type {infile_type} for compare()', error=f'Input file is not valid PDF type {infile_type} for compare()')
                         return jsonify({'status': 'error', 'message': f'Input file is not valid PDF type {infile_type} for compare()'}), 400
+                    task_manager.update_task(task_id, {'status': '运行中', 'progress': 90, 'message': '正在合并对照页面...'})
                     new_path = self.get_filename_after_process(input_path, new_type, engine)
                     self.cropper.merge_pdf(input_path, new_path)
                 else:
@@ -576,9 +650,10 @@ class PDFTranslator:
                     config.trans_first = False
                     config.no_dual = False
                     config.no_mono = True
-                    fileList = self.translate_pdf_next(input_path, config)
+                    fileList = self.translate_pdf_next(input_path, config, task_id)
                     dual_path = fileList[0]
                     if not os.path.exists(dual_path):
+                        task_manager.complete_task(task_id, 'failed', f'Dual file not found: {dual_path}', error=f'Dual file not found: {dual_path}')
                         return jsonify({'status': 'error', 'message': f'Dual file not found: {dual_path}'}), 500
                     new_path = self.get_filename_after_process(input_path, 'compare', engine)
                     if os.path.exists(new_path):
@@ -587,16 +662,21 @@ class PDFTranslator:
             else:
                 new_type = self.get_filetype_after_compare(input_path)
                 if new_type == 'unknown':
+                    task_manager.complete_task(task_id, 'failed', f'Input file is not valid PDF type {infile_type} for compare()', error=f'Input file is not valid PDF type {infile_type} for compare()')
                     return jsonify({'status': 'error', 'message': f'Input file is not valid PDF type {infile_type} for compare()'}), 400
+                task_manager.update_task(task_id, {'status': '运行中', 'progress': 90, 'message': '正在合并对照页面...'})
                 new_path = self.get_filename_after_process(input_path, new_type, engine)
                 self.cropper.merge_pdf(input_path, new_path)
             if os.path.exists(new_path):
                 fileName = os.path.basename(new_path)
                 print(f"🐲 双语对照成功, 生成文件: {fileName}, 大小为: {os.path.getsize(new_path)/1024.0/1024.0:.2f} MB")
+                task_manager.complete_task(task_id, 'success', '成功生成 1 个文件', file_list=[fileName])
                 return jsonify({'status': 'success', 'fileList': [fileName]}), 200
             else:
+                task_manager.complete_task(task_id, 'failed', f'Compare failed: {new_path} not found', error=f'Compare failed: {new_path} not found')
                 return jsonify({'status': 'error', 'message': f'Compare failed: {new_path} not found'}), 500
         except Exception as e:
+            task_manager.complete_task(task_id, 'failed', str(e), error=str(e))
             return self._handle_exception(e, context='/compare')
 
     def get_filetype(self, path):
