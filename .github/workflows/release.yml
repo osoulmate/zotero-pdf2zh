@@ -7,31 +7,56 @@ on:
   workflow_dispatch:
 
 jobs:
+  lint:
+      runs-on: ubuntu-latest
+      env:
+          GITHUB_TOKEN: ${{ secrets.GitHub_TOKEN }}
+      steps:
+          - name: Checkout
+            uses: actions/checkout@v4
+            with:
+                fetch-depth: 0
+          - name: Setup Node.js
+            uses: actions/setup-node@v4
+            with:
+                node-version: 24
+                # 为 plugin/package-lock.json 启用缓存
+                cache: 'npm'
+                cache-dependency-path: plugin/package-lock.json
+          - name: Install deps
+            run: |
+                cd plugin/ && npm install
+          - name: Run Lint
+            run: |
+                cd plugin/ && npm run lint:check
   build-and-release:
-    runs-on: ubuntu-latest
+      runs-on: ubuntu-latest
+      env:
+          GITHUB_TOKEN: ${{ secrets.GitHub_TOKEN }}
+      steps:
+          - name: Checkout
+            uses: actions/checkout@v4
+            with:
+                fetch-depth: 0
+          - name: Setup Node.js
+            uses: actions/setup-node@v4
+            with:
+                node-version: 24
+                # 为 plugin/package-lock.json 启用缓存
+                cache: 'npm'
+                cache-dependency-path: plugin/package-lock.json
+          - name: Install deps
+            run: |
+                cd plugin/ && npm install
+          - name: Run Build
+            run: |
+                cd plugin/ && npm run build
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install dependencies
-        run: npm install
-
-      # 这一步执行后，脚手架会自动在 build/ 目录下生成编译好的 .xpi 文件
-      - name: Build plugin
-        run: npm run build
-
-      # 直接将脚手架生成的 .xpi 文件发布到 GitHub Releases
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          # 使用通配符匹配 build 目录下的所有 .xpi 文件
-          # 这样无论你的 package.json 里版本号怎么变，都能准确抓取到
-          files: build/*.xpi
-          generate_release_notes: true
+          # 直接将脚手架生成的 .xpi 文件发布到 GitHub Releases
+          - name: Create GitHub Release
+            uses: softprops/action-gh-release@v2
+            if: startsWith(github.ref, 'refs/tags/')
+            with:
+              # 使用通配符匹配 build 目录下的所有 .xpi 文件
+              files: build/*.xpi
+              generate_release_notes: true
