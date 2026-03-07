@@ -134,7 +134,7 @@ python server.py --enable_winexe=True --winexe_path='./pdf2zh-v2.6.3-BabelDOC-v0
 - 关于**qps**和**poolsize**选项：请参考您的服务商（例如[zhipu](https://www.bigmodel.cn/dev/howuse/rate-limits)）。
 
     >   - 计算公式: `qps = rpm / 60`
-    >   - 对于上游为**qps/rpm限速**：pool size = qps * 10; 
+    >   - 对于上游为**qps/rpm限速**：pool size = qps * 10;
     >   - 对于上游为**并发数限制**: pool size = max(向下取整(0.9*官方并发数限制), 官方并发数限制-20)，qps = pool size
     >   - 如果您不知道怎么设置, 请直接设置qps即可, pool size设置为默认值0即可
 
@@ -232,3 +232,15 @@ pip install --upgrade pdf2zh_next babeldoc
 uv pip install --upgrade pdf2zh_next babeldoc
 ```
 
+## 声明与致谢 (Acknowledgement)
+
+本项目是基于优秀的开源项目 [zotero-pdf2zh](https://github.com/guaguastandup/zotero-pdf2zh) 的非官方定制化分支 (Unofficial Fork)。
+
+出于 [深度定制的 UI 交互（包括但不限于指定翻译页面）] 的考量，我们对原有代码进行了较大幅度的适配修改。由于这些修改方向与上游主干项目的演进路线不完全一致，因此本项目作为独立分支进行维护，并未向上游提交 PR。
+
+在此，向原项目作者及贡献者们表达最诚挚的感谢！原项目的基础架构为本分支提供了巨大的帮助。
+
+**⚠️ 注意：**
+* 本项目为个人/内部定制版本，原作者**不对**本分支产生的任何 Bug 或使用问题负责。
+* 如果你需要原版、稳定且功能通用的体验，请务必访问并支持 [官方上游仓库](https://github.com/guaguastandup/zotero-pdf2zh)。
+* 本项目严格继承原仓库的 [AGPL] 开源协议，所有底层核心代码的版权归原作者所有。

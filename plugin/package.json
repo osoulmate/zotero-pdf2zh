@@ -11,11 +11,11 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/guaguastandup/zotero-pdf2zh.git"
+        "url": "git+https://github.com/osoulmate/zotero-pdf2zh.git"
     },
     "author": "guaguastandup",
     "bugs": {
-        "url": "https://github.com/guaguastandup/zotero-pdf2zh/issues"
+        "url": "https://github.com/osoulmate/zotero-pdf2zh/issues"
     },
     "homepage": "https://github.com/guaguastandup/zotero-pdf2zh#readme",
     "license": "AGPL-3.0-or-later",
